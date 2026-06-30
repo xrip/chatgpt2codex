@@ -3,16 +3,16 @@
   "version": "0.1.0",
   "description": "Import a shared ChatGPT conversation into a local Codex CLI session.",
   "type": "module",
+  "packageManager": "npm@11.12.1",
   "bin": {
-    "chatgpt2codex": "./dist/cli.js"
+    "chatgpt2codex": "dist/cli.js"
   },
   "exports": {
     ".": "./dist/index.js"
   },
   "files": [
     "dist",
-    "README.md",
-    "PLAN.md"
+    "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -29,6 +29,9 @@
   ],
   "author": "",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20"
   },
