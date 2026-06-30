@@ -263,7 +263,7 @@ export function stateDbPath(codexHome: string): string {
 
 async function withStateDb<T>(
   codexHome: string,
-  readOnly: boolean,
+  _readOnly: boolean,
   callback: (db: DatabaseSync) => T,
 ): Promise<T | undefined> {
   const sqlite = await loadSqlite();
@@ -277,7 +277,7 @@ async function withStateDb<T>(
     await access(dbPath, constants.F_OK).catch(() => {
       throw new StateDbMissingError();
     });
-    db = new sqlite.DatabaseSync(dbPath, { readOnly });
+    db = new sqlite.DatabaseSync(dbPath);
     return callback(db);
   } catch (error) {
     if (error instanceof StateDbMissingError) {

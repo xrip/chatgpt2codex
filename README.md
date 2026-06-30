@@ -2,6 +2,8 @@
 
 Import a public ChatGPT share link into a local Codex CLI session.
 
+Requires Node.js 22.13.0 or newer.
+
 ```bash
 npx chatgpt2codex https://chatgpt.com/share/<id>
 ```
