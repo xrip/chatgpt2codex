@@ -3,6 +3,7 @@ import path from "node:path";
 import writeFileAtomic from "write-file-atomic";
 import { v7 as uuidv7 } from "uuid";
 
+import { upsertStateDbThread } from "./codexStateDb.js";
 import { buildSessionFilePath } from "./paths.js";
 import {
   type NormalizedMessage,
@@ -33,7 +34,7 @@ export function buildCodexRolloutLines(
       cwd: options.cwd,
       originator: "chatgpt2codex",
       cli_version: `chatgpt2codex/${options.toolVersion}`,
-      source: "chatgpt",
+      source: "cli",
       thread_source: "user",
       model_provider: "openai",
     },
@@ -72,6 +73,21 @@ export async function writeCodexRollout(
     title: options.title,
     updatedAt: options.updatedAt ?? options.now ?? new Date(),
   });
+
+  if (options.writeStateDb !== false) {
+    await upsertStateDbThread({
+      threadId,
+      codexHome: options.codexHome,
+      rolloutPath: filePath,
+      cwd: options.cwd,
+      title: options.title,
+      messages: options.messages,
+      toolVersion: options.toolVersion,
+      createdAt: startedAt,
+      updatedAt: options.now ?? new Date(),
+      modelSlug: options.modelSlug,
+    });
+  }
 
   return {
     threadId,

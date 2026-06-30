@@ -7,6 +7,7 @@ import {
   buildCodexRolloutLines,
   writeCodexRollout,
 } from "../src/writeCodexRollout.js";
+import { createStateDb, readThreadRow } from "./stateDbFixture.js";
 
 describe("writeCodexRollout", () => {
   it("builds Codex response_item and event_msg lines", () => {
@@ -34,7 +35,7 @@ describe("writeCodexRollout", () => {
         payload: {
           id: "019f16dc-8b54-7d52-af4e-4b86b7ce0460",
           cwd: "/tmp/project",
-          source: "chatgpt",
+          source: "cli",
         },
       },
       {
@@ -109,5 +110,39 @@ describe("writeCodexRollout", () => {
         updated_at: "2026-06-30T04:00:05.000Z",
       }),
     );
+  });
+
+  it("upserts Codex state_5.sqlite metadata for the resume picker", async () => {
+    const codexHome = await mkdtemp(path.join(tmpdir(), "chatgpt2codex-"));
+    const cwd = await mkdtemp(path.join(tmpdir(), "chatgpt2codex-project-"));
+    await createStateDb(codexHome);
+
+    const result = await writeCodexRollout({
+      codexHome,
+      cwd,
+      title: "Synthetic",
+      toolVersion: "0.1.1",
+      threadId: "019f16dc-8b54-7d52-af4e-4b86b7ce0460",
+      now: new Date("2026-06-30T04:00:00.000Z"),
+      modelSlug: "gpt-test",
+      messages: [
+        {
+          role: "user",
+          text: "Hello picker",
+        },
+      ],
+    });
+
+    expect(readThreadRow(codexHome, result.threadId)).toMatchObject({
+      id: "019f16dc-8b54-7d52-af4e-4b86b7ce0460",
+      rollout_path: result.filePath,
+      cwd,
+      source: "cli",
+      title: "Synthetic",
+      preview: "Hello picker",
+      first_user_message: "Hello picker",
+      has_user_event: 1,
+      archived: 0,
+    });
   });
 });

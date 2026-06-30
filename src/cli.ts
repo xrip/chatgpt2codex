@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { Command } from "commander";
 import pc from "picocolors";
 
+import { removeExistingCodexSession } from "./codexStateDb.js";
 import { fetchShareHtml, parseShareUrl } from "./fetchShare.js";
 import { findExistingCodexSession } from "./findExistingCodexSession.js";
 import { parseChatGptShareHtml } from "./parseChatGptShare.js";
@@ -19,6 +20,7 @@ interface CliOptions {
   name?: string;
   dryRun?: boolean;
   includeArchived?: boolean;
+  force?: boolean;
 }
 
 const require = createRequire(import.meta.url);
@@ -33,6 +35,7 @@ const program = new Command()
   .option("--name <name>", "override the imported session title")
   .option("--dry-run", "parse and print what would be imported without writing files")
   .option("--include-archived", "also scan archived_sessions for cwd collisions")
+  .option("--force", "replace an existing Codex session for the target cwd")
   .action(async (shareUrl: string, options: CliOptions) => {
     try {
       await runImport(shareUrl, options);
@@ -57,15 +60,22 @@ async function runImport(shareUrl: string, options: CliOptions): Promise<void> {
   });
 
   if (existing) {
-    throw new Error(
-      [
-        `A Codex session already exists for ${cwd}.`,
-        existing.id ? `Existing session: ${existing.id}` : undefined,
-        `File: ${existing.filePath}`,
-      ]
-        .filter(Boolean)
-        .join("\n"),
-    );
+    if (!options.force) {
+      throw new Error(
+        [
+          `A Codex session already exists for ${cwd}.`,
+          existing.id ? `Existing session: ${existing.id}` : undefined,
+          `File: ${existing.filePath}`,
+          "Use --force to replace it.",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      );
+    }
+
+    if (!options.dryRun) {
+      await removeExistingCodexSession(existing, codexHome);
+    }
   }
 
   const html = await fetchShareHtml(shareUrl);
@@ -105,6 +115,9 @@ async function runImport(shareUrl: string, options: CliOptions): Promise<void> {
   console.log(`Thread: ${result.threadId}`);
   console.log(`File: ${result.filePath}`);
   console.log(`Messages: ${parsed.messages.length}`);
+  if (existing && options.force) {
+    console.log("Replaced existing Codex session for this cwd.");
+  }
 }
 
 function printDryRun(summary: {

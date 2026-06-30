@@ -22,6 +22,7 @@ Options:
 - `--name <name>` - override the imported session title.
 - `--dry-run` - parse the ChatGPT share and print a summary without writing files.
 - `--include-archived` - also scan `archived_sessions/` for `cwd` collisions.
+- `--force` - replace an existing Codex session for the target directory.
 
 ## Notes
 
@@ -32,6 +33,8 @@ The tool writes Codex rollout JSONL files under:
 ```
 
 It also appends a best-effort title entry to `~/.codex/session_index.jsonl`.
+When `~/.codex/state_5.sqlite` exists, it also writes the thread metadata that
+modern Codex builds use for the resume picker.
 
 ChatGPT share pages and Codex rollout files are not public import APIs, so the
 parser and writer are intentionally small and covered by fixtures.

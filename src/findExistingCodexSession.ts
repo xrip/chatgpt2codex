@@ -6,6 +6,7 @@ import {
   canonicalizePathLoose,
   normalizePathForCompare,
 } from "./paths.js";
+import { findStateDbSessionByCwd } from "./codexStateDb.js";
 import { isRecord, maybeString, type ExistingCodexSession } from "./types.js";
 
 export interface FindExistingCodexSessionOptions {
@@ -17,6 +18,11 @@ export interface FindExistingCodexSessionOptions {
 export async function findExistingCodexSession(
   options: FindExistingCodexSessionOptions,
 ): Promise<ExistingCodexSession | undefined> {
+  const stateDbSession = await findStateDbSessionByCwd(options);
+  if (stateDbSession) {
+    return stateDbSession;
+  }
+
   const targetCwd = await canonicalizePathLoose(options.cwd);
   const patterns = ["sessions/**/rollout-*.jsonl"];
   if (options.includeArchived) {
@@ -42,6 +48,7 @@ export async function findExistingCodexSession(
       return {
         ...session,
         filePath,
+        source: "jsonl",
       };
     }
   }

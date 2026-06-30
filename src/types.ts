@@ -24,6 +24,8 @@ export interface ExistingCodexSession {
   cwd: string;
   filePath: string;
   timestamp?: string;
+  source?: "jsonl" | "state_db";
+  archived?: boolean;
 }
 
 export interface WriteCodexRolloutOptions {
@@ -38,6 +40,7 @@ export interface WriteCodexRolloutOptions {
   modelSlug?: string;
   threadId?: string;
   now?: Date;
+  writeStateDb?: boolean;
 }
 
 export interface WriteCodexRolloutResult {

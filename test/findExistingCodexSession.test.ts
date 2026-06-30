@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { findExistingCodexSession } from "../src/findExistingCodexSession.js";
+import { createStateDb, insertThreadRow } from "./stateDbFixture.js";
 
 describe("findExistingCodexSession", () => {
   it("finds a rollout whose session_meta cwd matches the target cwd", async () => {
@@ -68,5 +69,24 @@ describe("findExistingCodexSession", () => {
     await expect(
       findExistingCodexSession({ codexHome, cwd, includeArchived: true }),
     ).resolves.toMatchObject({ id: "archived" });
+  });
+
+  it("finds an active state_5.sqlite thread for the target cwd", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "chatgpt2codex-"));
+    const codexHome = path.join(root, ".codex");
+    const cwd = path.join(root, "project");
+    await mkdir(cwd, { recursive: true });
+    await createStateDb(codexHome);
+    insertThreadRow(codexHome, {
+      id: "state-db-thread",
+      rolloutPath: path.join(codexHome, "sessions", "rollout-state-db-thread.jsonl"),
+      cwd,
+    });
+
+    await expect(findExistingCodexSession({ codexHome, cwd })).resolves.toMatchObject({
+      id: "state-db-thread",
+      source: "state_db",
+      cwd,
+    });
   });
 });
