@@ -1,0 +1,49 @@
+{
+  "name": "chatgpt2codex",
+  "version": "0.1.0",
+  "description": "Import a shared ChatGPT conversation into a local Codex CLI session.",
+  "type": "module",
+  "bin": {
+    "chatgpt2codex": "./dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "PLAN.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
+    "pretest": "npm run build",
+    "test": "vitest run",
+    "check": "npm test"
+  },
+  "keywords": [
+    "codex",
+    "chatgpt",
+    "import",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "fast-glob": "^3.3.3",
+    "picocolors": "^1.1.1",
+    "uuid": "^14.0.1",
+    "write-file-atomic": "^5.0.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "@types/write-file-atomic": "^4.0.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}
