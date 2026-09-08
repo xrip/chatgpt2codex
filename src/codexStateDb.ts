@@ -297,6 +297,20 @@ async function loadSqlite(): Promise<SqliteModule | undefined> {
   try {
     return await import("node:sqlite");
   } catch {
+    // Bun does not ship node:sqlite; fall back to bun:sqlite below.
+  }
+
+  try {
+    // Non-literal specifier so TypeScript does not resolve the module;
+    // this import only exists under the Bun runtime.
+    const specifier = "bun:sqlite";
+    const bunSqlite = (await import(specifier)) as {
+      Database: unknown;
+    };
+    return {
+      DatabaseSync: bunSqlite.Database,
+    } as unknown as SqliteModule;
+  } catch {
     return undefined;
   }
 }

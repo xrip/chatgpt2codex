@@ -118,7 +118,7 @@ async function runImport(shareUrl: string, options: CliOptions): Promise<void> {
   if (result.stateDbWritten === false) {
     console.warn(
       pc.yellow(
-        "Warning: node:sqlite is unavailable (are you running under bun?), so the session was not added to state_5.sqlite and Codex may not list it. Re-run with Node.js >= 22.13.",
+        "Warning: no sqlite engine available (node:sqlite or bun:sqlite), so the session was not added to state_5.sqlite and Codex may not list it.",
       ),
     );
   }
