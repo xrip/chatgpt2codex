@@ -6,13 +6,13 @@ import { v7 as uuidv7 } from "uuid";
 import { upsertStateDbThread } from "./codexStateDb.js";
 import { buildSessionFilePath } from "./paths.js";
 import {
-  type NormalizedMessage,
   type WriteCodexRolloutOptions,
   type WriteCodexRolloutResult,
 } from "./types.js";
 
 interface RolloutLine {
   timestamp: string;
+  ordinal: number;
   type: string;
   payload: unknown;
 }
@@ -23,27 +23,69 @@ export function buildCodexRolloutLines(
   const threadId = options.threadId ?? uuidv7();
   const startedAt = options.createdAt ?? options.now ?? new Date();
   const lines: RolloutLine[] = [];
+  let lastTimestamp = startedAt.getTime();
 
-  lines.push({
+  const pushLine = (timestamp: Date, type: string, payload: unknown): void => {
+    // Codex rebuilds history in file order; keep timestamps monotonic.
+    const clamped = new Date(Math.max(lastTimestamp, timestamp.getTime()));
+    lastTimestamp = clamped.getTime();
+    lines.push({
+      timestamp: clamped.toISOString(),
+      ordinal: lines.length,
+      type,
+      payload,
+    });
+  };
+
+  pushLine(startedAt, "session_meta", {
+    session_id: threadId,
+    id: threadId,
     timestamp: startedAt.toISOString(),
-    type: "session_meta",
-    payload: {
-      session_id: threadId,
-      id: threadId,
-      timestamp: startedAt.toISOString(),
-      cwd: options.cwd,
-      originator: "chatgpt2codex",
-      cli_version: `chatgpt2codex/${options.toolVersion}`,
-      source: "cli",
-      thread_source: "user",
-      model_provider: "openai",
-    },
+    cwd: options.cwd,
+    originator: "chatgpt2codex",
+    cli_version: `chatgpt2codex/${options.toolVersion}`,
+    source: "cli",
+    thread_source: "user",
+    model_provider: "openai",
   });
 
   options.messages.forEach((message, index) => {
     const timestamp = message.createdAt ?? offsetDate(startedAt, index + 1);
-    lines.push(buildResponseItemLine(message, timestamp));
-    lines.push(buildEventMessageLine(message, timestamp));
+
+    // Mirror the line order Codex itself writes: response_item then
+    // user_message event for user turns, agent_message event then
+    // response_item for assistant turns.
+    if (message.role === "user") {
+      pushLine(timestamp, "response_item", {
+        type: "message",
+        id: `msg_${uuidv7()}`,
+        role: "user",
+        content: [{ type: "input_text", text: message.text }],
+      });
+      pushLine(timestamp, "event_msg", {
+        type: "user_message",
+        message: message.text,
+        images: [],
+        local_images: [],
+        audio: [],
+        local_audio: [],
+        text_elements: [],
+      });
+    } else {
+      pushLine(timestamp, "event_msg", {
+        type: "agent_message",
+        message: message.text,
+        phase: "final_answer",
+        memory_citation: null,
+      });
+      pushLine(timestamp, "response_item", {
+        type: "message",
+        id: `msg_${uuidv7()}`,
+        role: "assistant",
+        content: [{ type: "output_text", text: message.text }],
+        phase: "final_answer",
+      });
+    }
   });
 
   return { threadId, startedAt, lines };
@@ -74,8 +116,9 @@ export async function writeCodexRollout(
     updatedAt: options.updatedAt ?? options.now ?? new Date(),
   });
 
+  let stateDbWritten: boolean | undefined;
   if (options.writeStateDb !== false) {
-    await upsertStateDbThread({
+    stateDbWritten = await upsertStateDbThread({
       threadId,
       codexHome: options.codexHome,
       rolloutPath: filePath,
@@ -94,58 +137,7 @@ export async function writeCodexRollout(
     filePath,
     sessionIndexPath,
     lineCount: lines.length,
-  };
-}
-
-function buildResponseItemLine(
-  message: NormalizedMessage,
-  timestamp: Date,
-): RolloutLine {
-  return {
-    timestamp: timestamp.toISOString(),
-    type: "response_item",
-    payload: {
-      type: "message",
-      role: message.role,
-      content: [
-        {
-          type: message.role === "user" ? "input_text" : "output_text",
-          text: message.text,
-        },
-      ],
-    },
-  };
-}
-
-function buildEventMessageLine(
-  message: NormalizedMessage,
-  timestamp: Date,
-): RolloutLine {
-  if (message.role === "user") {
-    return {
-      timestamp: timestamp.toISOString(),
-      type: "event_msg",
-      payload: {
-        type: "user_message",
-        message: message.text,
-        images: null,
-        image_details: null,
-        local_images: [],
-        local_image_details: [],
-        text_elements: [],
-      },
-    };
-  }
-
-  return {
-    timestamp: timestamp.toISOString(),
-    type: "event_msg",
-    payload: {
-      type: "agent_message",
-      message: message.text,
-      phase: null,
-      memory_citation: null,
-    },
+    stateDbWritten,
   };
 }
 

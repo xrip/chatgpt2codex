@@ -124,10 +124,10 @@ export async function deleteStateDbSessionById(
 
 export async function upsertStateDbThread(
   input: StateDbThreadInput,
-): Promise<void> {
-  await withStateDb(input.codexHome, false, (db) => {
+): Promise<boolean> {
+  const written = await withStateDb(input.codexHome, false, (db) => {
     if (!hasRequiredThreadColumns(db, REQUIRED_THREAD_COLUMNS)) {
-      return;
+      return false;
     }
 
     const firstUserMessage =
@@ -237,7 +237,11 @@ export async function upsertStateDbThread(
         null,
         "enabled",
       );
+
+    return true;
   });
+
+  return written ?? false;
 }
 
 export async function removeExistingCodexSession(

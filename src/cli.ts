@@ -115,6 +115,13 @@ async function runImport(shareUrl: string, options: CliOptions): Promise<void> {
   console.log(`Thread: ${result.threadId}`);
   console.log(`File: ${result.filePath}`);
   console.log(`Messages: ${parsed.messages.length}`);
+  if (result.stateDbWritten === false) {
+    console.warn(
+      pc.yellow(
+        "Warning: node:sqlite is unavailable (are you running under bun?), so the session was not added to state_5.sqlite and Codex may not list it. Re-run with Node.js >= 22.13.",
+      ),
+    );
+  }
   if (existing && options.force) {
     console.log("Replaced existing Codex session for this cwd.");
   }

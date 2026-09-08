@@ -10,7 +10,7 @@ import {
 import { createStateDb, readThreadRow } from "./stateDbFixture.js";
 
 describe("writeCodexRollout", () => {
-  it("builds Codex response_item and event_msg lines", () => {
+  it("builds Codex response_item lines with ordinals and message ids", () => {
     const built = buildCodexRolloutLines({
       cwd: "/tmp/project",
       title: "Synthetic",
@@ -31,6 +31,7 @@ describe("writeCodexRollout", () => {
 
     expect(built.lines).toMatchObject([
       {
+        ordinal: 0,
         type: "session_meta",
         payload: {
           id: "019f16dc-8b54-7d52-af4e-4b86b7ce0460",
@@ -39,6 +40,7 @@ describe("writeCodexRollout", () => {
         },
       },
       {
+        ordinal: 1,
         type: "response_item",
         payload: {
           role: "user",
@@ -46,27 +48,65 @@ describe("writeCodexRollout", () => {
         },
       },
       {
+        ordinal: 2,
         type: "event_msg",
         payload: {
           type: "user_message",
           message: "Hello",
+          images: [],
         },
       },
       {
-        type: "response_item",
-        payload: {
-          role: "assistant",
-          content: [{ type: "output_text", text: "Hi" }],
-        },
-      },
-      {
+        ordinal: 3,
         type: "event_msg",
         payload: {
           type: "agent_message",
           message: "Hi",
+          phase: "final_answer",
+        },
+      },
+      {
+        ordinal: 4,
+        type: "response_item",
+        payload: {
+          role: "assistant",
+          phase: "final_answer",
+          content: [{ type: "output_text", text: "Hi" }],
         },
       },
     ]);
+
+    for (const line of built.lines.filter((line) => line.type === "response_item")) {
+      const payload = line.payload as { id?: string };
+      expect(payload.id).toMatch(/^msg_[0-9a-f-]{36}$/);
+    }
+  });
+
+  it("keeps timestamps monotonic when source times are out of order", () => {
+    const built = buildCodexRolloutLines({
+      cwd: "/tmp/project",
+      title: "Synthetic",
+      toolVersion: "0.1.0",
+      threadId: "019f16dc-8b54-7d52-af4e-4b86b7ce0460",
+      now: new Date("2026-06-30T04:00:00.000Z"),
+      messages: [
+        {
+          role: "user",
+          text: "Hello",
+          createdAt: new Date("2026-06-30T04:00:35.000Z"),
+        },
+        {
+          role: "assistant",
+          text: "Hi",
+          createdAt: new Date("2026-06-30T04:00:24.000Z"),
+        },
+      ],
+    });
+
+    const timestamps = built.lines.map((line) => line.timestamp);
+    expect(timestamps).toEqual([...timestamps].sort());
+    expect(built.lines[1].timestamp).toBe("2026-06-30T04:00:35.000Z");
+    expect(built.lines[2].timestamp).toBe("2026-06-30T04:00:35.000Z");
   });
 
   it("writes rollout JSONL and a session index entry", async () => {

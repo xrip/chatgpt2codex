@@ -48,6 +48,7 @@ export interface WriteCodexRolloutResult {
   filePath: string;
   sessionIndexPath: string;
   lineCount: number;
+  stateDbWritten?: boolean;
 }
 
 export const shareUrlSchema = z
